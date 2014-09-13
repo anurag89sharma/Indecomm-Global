@@ -28,6 +28,9 @@ class Company_Shares(object):
         # year for which the maximum share price is recorded. Their cab be multiple month and year for 
         # which the share price is maximum for a particular company
         self.max_share_companies = []
+        self.length_per_row = 0
+        self.error_flag = False
+        self.read_file()
 
     def create_ds(self,row):
         """
@@ -35,6 +38,7 @@ class Company_Shares(object):
         and the time (month and year) during which the company share was at its maximum value. The maximum
         share price of every company is initialized to zero
         """
+        self.length_per_row = len(row)
         companies = row[2:]
         for i in xrange(0,len(companies)):
             self.company_index[companies[i]] = i
@@ -71,35 +75,45 @@ class Company_Shares(object):
         index = 0
         try:
             f = open(self.filename, 'rb')
+            with f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if index == 0:
+                        self.create_ds(row)
+                        index += 1
+                    else:
+                        if len(row) != self.length_per_row:
+                            print "File is malformed"
+                            self.error_flag = True
+                            self.max_share_companies = "File is malformed"
+                            break
+                        else:    
+                            self.process_row(row)
         except IOError:
             print "Could not read file:", self.filename
-            sys.exit()
+            self.error_flag = True
+            self.max_share_companies = "File not found exception"
+            #sys.exit()
 
-        with f:
-            reader = csv.reader(f)
-            for row in reader:
-                if index == 0:
-                    self.create_ds(row)
-                    index += 1
-                else:
-                    self.process_row(row)
+        
     
     def execute(self):
         """
         Wrapper function to find the maximum share price of each company. It first executes the read_file
         function and then outputs for each Company price, year and month in which the share price was highest.
         """
-        self.read_file()
-        print "Company\t\tPrice\tTime" 
-        for key, val in self.company_index.iteritems():
-            company_name = key
-            price = self.max_share_companies[val][0]
-            time_period = []
-            for items in self.max_share_companies[val][1]:
-                time = '%s, %s' % (items[0], items[1])
-                time_period.append(time)
-            time_period = '; '.join(time_period) 
-            print  '%s\t%s\t%s' % (company_name, price, time_period)
+        #self.read_file()
+        if not self.error_flag:
+            print "Company\t\tPrice\tTime" 
+            for key, val in self.company_index.iteritems():
+                company_name = key
+                price = self.max_share_companies[val][0]
+                time_period = []
+                for items in self.max_share_companies[val][1]:
+                    time = '%s, %s' % (items[0], items[1])
+                    time_period.append(time)
+                time_period = '; '.join(time_period) 
+                print  '%s\t%s\t%s' % (company_name, price, time_period)
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
@@ -108,3 +122,5 @@ if __name__ == '__main__':
         filename = 'input.txt'
     obj = Company_Shares(filename)
     obj.execute()
+    #result = obj.max_share_companies
+    #print result
